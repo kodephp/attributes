@@ -3,7 +3,10 @@
 
 # IDE
 /.idea/
-/.vscode/
+*/.vscode/
+.trae
+*/.cursor
+
 
 # OS
 /.DS_Store
@@ -19,3 +22,6 @@
 # Temporary files
 *.tmp
 *.temp
+
+.DS_Store
+Thumbs.db

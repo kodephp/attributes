@@ -120,4 +120,4 @@ foreach ($scanner->find(Route::class) as $class => $metas) {
 
 ## 许可证
 
-MIT许可证，请查看 [LICENSE](LICENSE) 文件了解详细信息。
+Apache许可证，请查看 [LICENSE](LICENSE) 文件了解详细信息。
