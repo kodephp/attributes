@@ -1,0 +1,46 @@
+{
+    "name": "kode/attributes",
+    "type": "library",
+    "description": "Lightweight, robust attribute reader for PHP 8.1+, base for kodephp and any framework.",
+    "keywords": ["attributes", "annotations", "reflection", "php81", "kodephp"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Your Name",
+            "email": "your.email@example.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0",
+        "friendsofphp/php-cs-fixer": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kode\\Attributes\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Kode\\Attributes\\Tests\\": "tests/"
+        },
+        "files": ["resources/.phpstorm.meta.php"]
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit tests",
+        "fix": "vendor/bin/php-cs-fixer fix",
+        "check": "vendor/bin/php-cs-fixer fix --dry-run"
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0-dev"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
