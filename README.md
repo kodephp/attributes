@@ -413,13 +413,6 @@ $reader = new Reader(new RedisCache($redis));
 Attr::setReader($reader);
 ```
 
-## 性能优化建议
-
-1. **使用单例模式**：`Attr` 门面内置单例，避免重复创建 Reader
-2. **合理使用缓存**：默认使用内存缓存，长生命周期可考虑 Redis/APCu
-3. **延迟实例化**：`Meta::getInstance()` 延迟创建属性实例
-4. **批量操作**：使用 `MetaList` 的链式操作减少循环
-
 ## 系统要求
 
 - PHP >= 8.1
@@ -463,7 +456,36 @@ composer check
 composer fix
 ```
 
+## 贡献
+
+欢迎提交 Issue 和 Pull Request 来改进这个项目。
+
+### 贡献指南
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 创建 Pull Request
+
+## 许可证
+
+本项目基于 [Apache License 2.0](LICENSE) 开源协议发布。
+
+## 作者
+
+KodePHP - [382601296@qq.com](mailto:382601296@qq.com)
+
+## 致谢
+
+感谢所有为这个项目做出贡献的开发者！
+
 ## 更新日志
+
+### v1.2.1 (2025-03-12)
+
+- 移除冗余的性能优化建议章节（功能已内置）
+- 精简 README 文档结构
 
 ### v1.2.0 (2025-03-12)
 
@@ -498,27 +520,3 @@ composer fix
 - 核心属性读取功能
 - 缓存系统
 - 目录扫描器
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request 来改进这个项目。
-
-### 贡献指南
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
-
-## 许可证
-
-本项目基于 [Apache License 2.0](LICENSE) 开源协议发布。
-
-## 作者
-
-KodePHP - [382601296@qq.com](mailto:382601296@qq.com)
-
-## 致谢
-
-感谢所有为这个项目做出贡献的开发者！
