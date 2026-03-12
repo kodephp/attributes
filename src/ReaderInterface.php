@@ -4,54 +4,57 @@ declare(strict_types=1);
 
 namespace Kode\Attributes;
 
+use ReflectionParameter;
+
 /**
- * Interface for attribute readers.
+ * 属性读取器接口。
  * 
- * Defines the contract for reading attributes from various targets.
+ * 定义属性读取器的契约，支持从各种目标读取属性。
  * 
  * @package Kode\Attributes
+ * @author KodePHP <382601296@qq.com>
  */
 interface ReaderInterface
 {
     /**
-     * Get attributes for a class.
+     * 获取类的属性。
      * 
-     * @param string $class The class name
-     * @return MetaList
+     * @param string $class 类名
+     * @return MetaList 属性元数据集合
      */
     public function getClassAttrs(string $class): MetaList;
 
     /**
-     * Get attributes for a method.
+     * 获取方法的属性。
      * 
-     * @param string $class The class name
-     * @param string $method The method name
-     * @return MetaList
+     * @param string $class 类名
+     * @param string $method 方法名
+     * @return MetaList 属性元数据集合
      */
     public function getMethodAttrs(string $class, string $method): MetaList;
 
     /**
-     * Get attributes for a property.
+     * 获取属性的属性。
      * 
-     * @param string $class The class name
-     * @param string $property The property name
-     * @return MetaList
+     * @param string $class 类名
+     * @param string $property 属性名
+     * @return MetaList 属性元数据集合
      */
     public function getPropertyAttrs(string $class, string $property): MetaList;
 
     /**
-     * Get attributes for a function.
+     * 获取函数的属性。
      * 
-     * @param string $function The function name
-     * @return MetaList
+     * @param string $function 函数名
+     * @return MetaList 属性元数据集合
      */
     public function getFunctionAttrs(string $function): MetaList;
 
     /**
-     * Get attributes for a parameter.
+     * 获取参数的属性。
      * 
-     * @param \ReflectionParameter $param The parameter reflection
-     * @return MetaList
+     * @param ReflectionParameter $param 参数反射实例
+     * @return MetaList 属性元数据集合
      */
-    public function getParameterAttrs(\ReflectionParameter $param): MetaList;
+    public function getParameterAttrs(ReflectionParameter $param): MetaList;
 }

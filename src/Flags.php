@@ -4,100 +4,188 @@ declare(strict_types=1);
 
 namespace Kode\Attributes;
 
+use Attribute;
+
 /**
- * Attribute flags.
+ * 属性行为标志类。
  * 
- * Defines behavior flags for attributes.
+ * 用于标记属性的行为特性，如是否继承、编译期处理、优先级等。
+ * 框架可据此优化调度顺序和处理逻辑。
  * 
  * @package Kode\Attributes
+ * @author KodePHP <382601296@qq.com>
  */
-#[\Attribute(\Attribute::IS_REPEATABLE)]
+#[Attribute(Attribute::IS_REPEATABLE | Attribute::TARGET_CLASS)]
 class Flags
 {
     /**
-     * Whether the attribute is inherited by child classes.
-     * 
-     * @var bool
+     * 是否被子类继承。
      */
     public readonly bool $inherit;
 
     /**
-     * Whether the attribute is only processed at compile time.
-     * 
-     * @var bool
+     * 是否仅在编译期处理。
      */
     public readonly bool $compileTime;
 
     /**
-     * The priority of the attribute (higher values are processed first).
-     * 
-     * @var int
+     * 处理优先级（数值越大优先级越高）。
      */
     public readonly int $priority;
 
     /**
-     * Create new flags.
+     * 是否缓存处理结果。
+     */
+    public readonly bool $cacheable;
+
+    /**
+     * 创建新的Flags实例。
      * 
-     * @param bool $inherit Whether the attribute is inherited by child classes
-     * @param bool $compileTime Whether the attribute is only processed at compile time
-     * @param int $priority The priority of the attribute
+     * @param bool $inherit 是否被子类继承
+     * @param bool $compileTime 是否仅在编译期处理
+     * @param int $priority 处理优先级
+     * @param bool $cacheable 是否缓存处理结果
      */
     public function __construct(
         bool $inherit = false,
         bool $compileTime = false,
-        int $priority = 0
+        int $priority = 0,
+        bool $cacheable = true
     ) {
         $this->inherit = $inherit;
         $this->compileTime = $compileTime;
         $this->priority = $priority;
+        $this->cacheable = $cacheable;
     }
     
     /**
-     * Check if this is the default set of flags.
+     * 检查是否为默认标志配置。
      * 
-     * @return bool
+     * @return bool 是否为默认配置
      */
     public function isDefault(): bool
     {
-        return !$this->inherit && !$this->compileTime && $this->priority === 0;
+        return !$this->inherit 
+            && !$this->compileTime 
+            && $this->priority === 0 
+            && $this->cacheable === true;
     }
     
     /**
-     * Merge with another set of flags.
+     * 合并另一个Flags实例。
      * 
-     * @param Flags $other The other flags to merge with
-     * @return Flags
+     * @param Flags $other 要合并的Flags实例
+     * @return Flags 合并后的新实例
      */
     public function merge(self $other): self
     {
         return new self(
             $this->inherit || $other->inherit,
             $this->compileTime || $other->compileTime,
-            max($this->priority, $other->priority)
+            max($this->priority, $other->priority),
+            $this->cacheable && $other->cacheable
         );
+    }
+
+    /**
+     * 创建继承标志实例。
+     * 
+     * @param int $priority 优先级
+     * @return self
+     */
+    public static function inherit(int $priority = 0): self
+    {
+        return new self(inherit: true, priority: $priority);
+    }
+
+    /**
+     * 创建编译期标志实例。
+     * 
+     * @param int $priority 优先级
+     * @return self
+     */
+    public static function compileTime(int $priority = 0): self
+    {
+        return new self(compileTime: true, priority: $priority);
+    }
+
+    /**
+     * 创建高优先级标志实例。
+     * 
+     * @param int $priority 优先级
+     * @return self
+     */
+    public static function highPriority(int $priority = 100): self
+    {
+        return new self(priority: $priority);
+    }
+
+    /**
+     * 创建不可缓存标志实例。
+     * 
+     * @return self
+     */
+    public static function nonCacheable(): self
+    {
+        return new self(cacheable: false);
     }
     
     /**
-     * Get a string representation of the flags.
+     * 获取字符串表示。
      * 
-     * @return string
+     * @return string 字符串表示
      */
     public function __toString(): string
     {
         $parts = [];
         
         if ($this->inherit) {
-            $parts[] = 'inherit';
+            $parts[] = '继承';
         }
         
         if ($this->compileTime) {
-            $parts[] = 'compileTime';
+            $parts[] = '编译期';
+        }
+        
+        if (!$this->cacheable) {
+            $parts[] = '不缓存';
         }
         
         if ($this->priority !== 0) {
-            $parts[] = "priority:{$this->priority}";
+            $parts[] = "优先级:{$this->priority}";
         }
         
-        return implode(', ', $parts) ?: 'none';
+        return implode(', ', $parts) ?: '默认';
+    }
+
+    /**
+     * 转换为数组表示。
+     * 
+     * @return array{inherit: bool, compileTime: bool, priority: int, cacheable: bool} 数组表示
+     */
+    public function toArray(): array
+    {
+        return [
+            'inherit' => $this->inherit,
+            'compileTime' => $this->compileTime,
+            'priority' => $this->priority,
+            'cacheable' => $this->cacheable,
+        ];
+    }
+
+    /**
+     * 从数组创建Flags实例。
+     * 
+     * @param array{inherit?: bool, compileTime?: bool, priority?: int, cacheable?: bool} $data 数据数组
+     * @return self
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            inherit: $data['inherit'] ?? false,
+            compileTime: $data['compileTime'] ?? false,
+            priority: $data['priority'] ?? 0,
+            cacheable: $data['cacheable'] ?? true
+        );
     }
 }
