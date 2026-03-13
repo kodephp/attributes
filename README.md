@@ -476,45 +476,6 @@ composer fix
 
 KodePHP - [382601296@qq.com](mailto:382601296@qq.com)
 
-## 更新日志
-
-### v1.2.2 (2025-03-13)
-
-- 完善 Target 枚举类中文注释
-- 新增 `Target::toAttributeFlags()` 方法
-- 新增 `Target::getLabel()` 方法获取中文标签
-- 新增 `Target::toString()` 方法
-- 优化 composer.json 配置，添加脚本和支持信息
-
-### v1.2.1 (2025-03-12)
-
-- 移除冗余的性能优化建议章节（功能已内置）
-- 精简 README 文档结构
-
-### v1.2.0 (2025-03-12)
-
-- 重构核心类，优化代码结构
-- 完善所有类的中文注释
-- 新增 `Reader::getAllMethodAttrs()` 和 `Reader::getAllPropertyAttrs()` 方法
-- 新增 `Reader::getConstantAttrs()` 方法支持类常量属性
-- 新增 `ArrayCache` 统计功能（命中率、缓存大小等）
-- 新增 `Meta::getDeclaringClass()` 方法
-- 新增 `Meta::toArray()` 方法
-- 新增 `MetaList` 丰富的集合操作方法
-- 新增 `Target::ClassConstant` 枚举值
-- 新增 `Flags::$cacheable` 属性
-- 优化 `Scanner` 扫描性能
-- 完善单元测试覆盖（69个测试用例）
-- 整合文档到 README.md（中文）
-- 删除冗余的 docs 目录
-
-### v1.0.0 (2024-01-01)
-
-- 初始版本发布
-- 核心属性读取功能
-- 缓存系统
-- 目录扫描器
-
 ## 致谢
 
 感谢所有为这个项目做出贡献的开发者！
