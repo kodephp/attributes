@@ -1,19 +1,21 @@
 # kode/attributes
 
-[![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.1-8892BF)](https://php.net/)
+[![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.3-8892BF)](https://php.net/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green)](LICENSE)
 [![Latest Stable Version](https://img.shields.io/packagist/v/kode/attributes)](https://packagist.org/packages/kode/attributes)
 
-一个轻量级、健壮的 PHP 8.1+ 属性（Attribute）读取器，为 kodephp 框架和主流 PHP 框架（Laravel、Symfony、ThinkPHP8、Webman 等）提供基础组件支持。
+一个轻量级、健壮的 PHP 8.3+ 属性（Attribute）读取器，为 kodephp 框架和主流 PHP 框架（Laravel、Symfony、ThinkPHP8、Webman 等）提供基础组件支持。
+
+> **v2.0.0 重大修复（根因）**：1.x 的 `Attr` 门面只接受类名字符串或对象。一旦传入 `ReflectionClass` / `ReflectionProperty` / `ReflectionParameter`，由于它们本身也是“对象”，会被当作普通对象处理，转而读取 **Reflection 类自身** 的属性——永远返回空集合且不报错，整条属性注入链就此静默失效。2.0 通过 `TargetRef` 将所有目标归一化为 `Reflector` 实例并原样透传，从根因上杜绝该问题，并在目标不存在时抛出 `TargetNotFoundException` 而非静默返回空集合。
 
 ## 特性
 
 - **零依赖** - 仅使用 PHP 原生功能，无第三方依赖
 - **高性能** - 内置反射缓存机制，延迟实例化属性对象
-- **类型安全** - 利用 PHP 8.1+ 的枚举和泛型特性
+- **类型安全** - 利用 PHP 8.3+ 的枚举、泛型与 `#[Override]` 等特性
 - **IDE 友好** - 提供完整的 PHPStorm 元数据支持
 - **协变支持** - `MetaList<@template-covariant T>` 支持类型安全的协变
-- **框架无关** - 可在任何 PHP 8.1+ 项目中使用
+- **框架无关** - 可在任何 PHP 8.3+ 项目中使用
 - **安全封装** - 封装反射 API，避免直接暴露 `ReflectionClass`
 - **可扩展** - 可插拔缓存系统，支持自定义缓存驱动
 
@@ -206,6 +208,10 @@ foreach ($scanner->scanDeep(__DIR__ . '/src') as $class => $info) {
 | `Scanner` | 目录扫描器 |
 | `Target` | 属性目标类型枚举 |
 | `Flags` | 属性行为标志 |
+| `TargetRef` | 目标归一化与缓存键生成（2.0 核心修复层） |
+| `TargetSet` | 位掩码目标集合（精确表达组合目标，不再退化成 All） |
+| `Inspector` | 链式属性检查器（2.0 新增） |
+| `Exception\*` | 异常体系：`AttributeException` / `InvalidTargetException` / `TargetNotFoundException` / `AttributeInstantiationException` |
 
 ### 关键接口
 
@@ -223,8 +229,8 @@ Attr::reader(): Reader
 // 设置自定义 Reader
 Attr::setReader(Reader $reader): void
 
-// 获取目标的所有属性
-Attr::of(object|string $target): MetaList
+// 获取目标的所有属性（接受任意 Reflector / 闭包 / 可调用数组 / 成员字符串，并支持继承链）
+Attr::of(mixed $target, bool $inherited = false): MetaList
 
 // 检查是否存在属性
 Attr::has(object|string $target, string $attrClass): bool
@@ -240,6 +246,32 @@ Attr::scan(string $dir): Scanner
 
 // 清除缓存
 Attr::clear(): void
+
+// ===== 2.0 新增 API =====
+
+// 严格模式：实例化异常时抛出而非静默跳过
+Attr::strict(bool $strict = true): void
+
+// 针对单一目标创建链式检查器
+Attr::on(mixed $target): Inspector
+
+// 直接获取属性实例（非严格模式跳过损坏项，严格模式抛出）
+Attr::instances(mixed $target, string $attrClass, bool $inherited = false): array
+
+// 按成员类型精确读取
+Attr::ofClass(object|string $class, bool $inherited = false): MetaList
+Attr::ofMethod(object|string $class, string $method, bool $inherited = false): MetaList
+Attr::ofProperty(object|string $class, string $property, bool $inherited = false): MetaList
+Attr::ofConstant(object|string $class, string $constant): MetaList
+Attr::ofFunction(string|Closure $function): MetaList
+Attr::ofParameter(ReflectionParameter|string|array|Closure $target, ...): MetaList
+Attr::ofEnumCase(UnitEnum $case): MetaList
+
+// 批量按成员分组读取
+Attr::methods(object|string $class, ?string $attrClass = null, bool $inherited = false): array
+Attr::properties(object|string $class, ?string $attrClass = null, bool $inherited = false): array
+Attr::constants(object|string $class, ?string $attrClass = null): array
+Attr::parameters(object|string $target, ?string $method = null, ?string $attrClass = null): array
 ```
 
 ### MetaList 集合方法
@@ -415,7 +447,7 @@ Attr::setReader($reader);
 
 ## 系统要求
 
-- PHP >= 8.1
+- PHP >= 8.3
 - ext-json
 - ext-mbstring
 
@@ -423,9 +455,9 @@ Attr::setReader($reader);
 
 | PHP 版本 | 支持状态 |
 |----------|----------|
-| PHP 8.1  | ✅ 完全支持 |
-| PHP 8.2  | ✅ 完全支持 |
-| PHP 8.3  | ✅ 完全支持 |
+| PHP 8.1  | ❌ 2.0 已不再支持（需 8.3+） |
+| PHP 8.2  | ❌ 2.0 已不再支持（需 8.3+） |
+| PHP 8.3  | ✅ 完全支持（最低要求） |
 | PHP 8.4  | ✅ 完全支持 |
 | PHP 8.5  | ✅ 完全支持（优先使用新特性） |
 

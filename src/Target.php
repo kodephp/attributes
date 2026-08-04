@@ -6,11 +6,11 @@ namespace Kode\Attributes;
 
 use Attribute;
 use ReflectionClass;
-use ReflectionMethod;
-use ReflectionProperty;
-use ReflectionFunction;
-use ReflectionParameter;
 use ReflectionClassConstant;
+use ReflectionFunction;
+use ReflectionMethod;
+use ReflectionParameter;
+use ReflectionProperty;
 
 /**
  * 属性目标类型枚举。
@@ -60,7 +60,11 @@ enum Target: int
 
     /**
      * 从Reflector实例创建Target。
-     * 
+     *
+     * 注意：ReflectionObject / ReflectionEnum 继承自 ReflectionClass，
+     * ReflectionEnumUnitCase / ReflectionEnumBackedCase 继承自 ReflectionClassConstant，
+     * 因此均可被正确识别。
+     *
      * @param \Reflector $ref 反射实例
      * @return self 目标类型枚举
      */
@@ -75,6 +79,28 @@ enum Target: int
             $ref instanceof ReflectionParameter => self::Parameter,
             default => self::All,
         };
+    }
+
+    /**
+     * 转换为精确的目标集合（位掩码）。
+     *
+     * 与 `combine()` 不同，`TargetSet` 能够精确表达任意组合，不会退化成 `All`。
+     *
+     * @return TargetSet 目标集合
+     */
+    public function toSet(): TargetSet
+    {
+        return new TargetSet($this->value);
+    }
+
+    /**
+     * 获取全部独立目标类型（不含 All）。
+     *
+     * @return array<int, self> 独立目标类型数组
+     */
+    public static function individual(): array
+    {
+        return self::getIndividualTargets();
     }
 
     /**
