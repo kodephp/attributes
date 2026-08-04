@@ -1,5 +1,15 @@
 <?php
 
+/*
+ * This file is part of the kode/attributes package.
+ *
+ * (c) kode (KodePHP) <382601296@qq.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 declare(strict_types=1);
 
 namespace Kode\Attributes;
@@ -11,7 +21,9 @@ namespace Kode\Attributes;
  * 支持自定义缓存驱动（如APCu、Redis、文件缓存等）。
  * 
  * @package Kode\Attributes
- * @author KodePHP <382601296@qq.com>
+ * @author  kode (KodePHP) <382601296@qq.com>
+ * @license Apache-2.0
+ * @link    https://github.com/kodephp/attributes
  */
 interface CacheInterface
 {

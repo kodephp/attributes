@@ -1,5 +1,15 @@
 <?php
 
+/*
+ * This file is part of the kode/attributes package.
+ *
+ * (c) kode (KodePHP) <382601296@qq.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 declare(strict_types=1);
 
 namespace Kode\Attributes;
@@ -21,7 +31,9 @@ use Traversable;
  * `TargetSet` 用位掩码精确表达任意组合，且与 PHP 原生 `Attribute::TARGET_*` 标志位完全等价。
  *
  * @package Kode\Attributes
- * @author KodePHP <382601296@qq.com>
+ * @author  kode (KodePHP) <382601296@qq.com>
+ * @license Apache-2.0
+ * @link    https://github.com/kodephp/attributes
  */
 final readonly class TargetSet implements Countable, IteratorAggregate, JsonSerializable, Stringable
 {

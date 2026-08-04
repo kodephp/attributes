@@ -587,9 +587,21 @@ composer fix
 
 本项目基于 [Apache License 2.0](LICENSE) 开源协议发布。
 
+```
+Copyright 2024-2026 kode (KodePHP)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+```
+
+署名信息同时记录于 [LICENSE](LICENSE)、[NOTICE](NOTICE) 与各源码文件头部。
+
 ## 作者
 
-KodePHP - [382601296@qq.com](mailto:382601296@qq.com)
+kode (KodePHP) - [382601296@qq.com](mailto:382601296@qq.com) - <https://github.com/kodephp>
 
 ## 致谢
 

@@ -1,26 +1,26 @@
 {
     "name": "kode/attributes",
     "type": "library",
-    "description": "轻量级、健壮的PHP 8.1+属性读取器，为kodephp框架和主流PHP框架提供基础组件支持",
+    "description": "轻量级、健壮的 PHP 8.3+ 属性读取器，为 kodephp 框架和主流 PHP 框架提供基础组件支持",
     "keywords": [
         "attributes",
         "annotations",
         "reflection",
-        "php81",
-        "php82",
         "php83",
         "php84",
         "php85",
+        "kode",
         "kodephp",
         "metadata"
     ],
     "license": "Apache-2.0",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "authors": [
         {
-            "name": "KodePHP",
+            "name": "kode",
             "email": "382601296@qq.com",
-            "homepage": "https://github.com/kodephp"
+            "homepage": "https://github.com/kodephp",
+            "role": "Developer"
         }
     ],
     "require": {
@@ -44,7 +44,7 @@
         }
     },
     "scripts": {
-        "test": "phpunit tests",
+        "test": "phpunit --no-coverage",
         "test:coverage": "phpunit tests --coverage-html .coverage",
         "fix": "php-cs-fixer fix",
         "check": "php-cs-fixer fix --dry-run",
