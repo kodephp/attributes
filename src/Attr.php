@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Kode\Attributes;
 
 use Closure;
+use Kode\Attributes\Cache\ArrayCache;
+use Kode\Attributes\CacheInterface;
 use Kode\Attributes\Exception\AttributeInstantiationException;
 use ReflectionFunctionAbstract;
 use ReflectionParameter;
@@ -34,7 +36,7 @@ final class Attr
     /**
      * 组件版本号。
      */
-    public const string VERSION = '2.0.0';
+    public const string VERSION = '2.1.0';
 
     /**
      * Reader 单例实例。
@@ -64,6 +66,20 @@ final class Attr
     public static function setReader(Reader $reader): void
     {
         self::$reader = $reader;
+    }
+
+    /**
+     * 设置全局缓存实现（用于多进程 / 分布式共享）。
+     *
+     * 例如注入 {@see \Kode\Attributes\Cache\RedisCache} 即可让所有 worker、
+     * 所有节点共享反射元数据，避免重复反射；或注入其它实现了
+     * {@see CacheInterface} 的驱动（APCu、文件、内存等）。
+     *
+     * @param CacheInterface $cache 缓存实现
+     */
+    public static function setCache(CacheInterface $cache): void
+    {
+        self::$reader = self::reader()->withCache($cache);
     }
 
     /**

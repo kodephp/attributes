@@ -38,7 +38,7 @@ final class AttrTest extends TestCase
     #[Test]
     public function versionIsTwo(): void
     {
-        $this->assertSame('2.0.0', Attr::VERSION);
+        $this->assertSame('2.1.0', Attr::VERSION);
     }
 
     #[Test]

@@ -18,6 +18,10 @@
 /.phpunit.cache/
 /.coverage/
 
+# Local-only / non-distributed files
+.workbuddy/
+CHANGELOG.md
+
 # Logs
 /logs/
 

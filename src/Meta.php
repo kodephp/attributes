@@ -385,15 +385,28 @@ final class Meta implements JsonSerializable, Stringable
      *
      * @return array{name: string, args: array<int|string, mixed>}
      */
+    /**
+     * 原生序列化：保留已实例化的属性对象。
+     *
+     * 这样通过共享缓存（RedisCache 等，跨进程/分布式）取回的 Meta 仍能直接
+     * 返回实例，无需再次反射构造。`toSnapshot()` 仍保持「最小快照」（不含实例），
+     * 用于 JSON / 持久化场景；此处刻意保留实例以服务运行时缓存。
+     *
+     * @return array{name: string, args: array<int|string, mixed>, instance: ?object}
+     */
     public function __serialize(): array
     {
-        return $this->toSnapshot();
+        return [
+            'name' => $this->name,
+            'args' => $this->args,
+            'instance' => $this->instance,
+        ];
     }
 
     /**
-     * 反序列化为纯数据模式的 Meta。
+     * 从原生序列化数据还原（纯数据模式，无反射对象）。
      *
-     * @param array{name: string, args?: array<int|string, mixed>} $data 序列化数据
+     * @param array{name: string, args?: array<int|string, mixed>, instance?: ?object} $data 序列化数据
      */
     public function __unserialize(array $data): void
     {
@@ -401,6 +414,8 @@ final class Meta implements JsonSerializable, Stringable
         $this->reflector = null;
         $this->name = $data['name'];
         $this->args = $data['args'] ?? [];
+        $this->instance = $data['instance'] ?? null;
+        $this->targetSet = null;
     }
 
     /**

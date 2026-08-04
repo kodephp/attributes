@@ -211,6 +211,7 @@ foreach ($scanner->scanDeep(__DIR__ . '/src') as $class => $info) {
 | `TargetRef` | 目标归一化与缓存键生成（2.0 核心修复层） |
 | `TargetSet` | 位掩码目标集合（精确表达组合目标，不再退化成 All） |
 | `Inspector` | 链式属性检查器（2.0 新增） |
+| `Cache\RedisCache` | 基于 Redis 的共享/分布式缓存适配器（2.1.0 新增，面向多进程/Fibers/分布式） |
 | `Exception\*` | 异常体系：`AttributeException` / `InvalidTargetException` / `TargetNotFoundException` / `AttributeInstantiationException` |
 
 ### 关键接口
@@ -395,54 +396,135 @@ $flags->__toString(): string
 
 ## 自定义缓存驱动
 
-```php
-use Kode\Attributes\CacheInterface;
+本包内置 `Kode\Attributes\Cache\RedisCache`（2.1.0 起），开箱即用地支持 **多进程 / 协程 Fibers / 分布式** 场景，无需自行实现。如需其它后端（APCu、文件、Memcached），实现 `CacheInterface` 即可。
 
-class RedisCache implements CacheInterface
+> 内置 `RedisCache` 已实现 `CacheInterface`，并具备：键前缀隔离、TTL 过期、`SCAN` 前缀批量清理、跨进程保留属性实例（不可序列化时自动降级为快照）。
+
+```php
+use Kode\Attributes\Attr;
+use Kode\Attributes\Cache\RedisCache;
+
+$redis = new \Redis();
+$redis->connect('127.0.0.1', 6379);
+
+// 建议前缀包含应用名/版本，避免与其它键冲突
+$cache = new RedisCache($redis, 'myapp:attr:v2:', 3600);
+
+// 方式一：直接替换全局 Reader 的缓存
+Attr::setCache($cache);
+
+// 方式二：构建独立 Reader
+$reader = new \Kode\Attributes\Reader($cache);
+Attr::setReader($reader);
+
+// 之后所有 Attr::of / Reader 读取都会经由该共享缓存，多进程/多节点共享反射结果
+$routes = Attr::ofClass(UserController::class);
+```
+
+若需自行实现缓存驱动，实现 `CacheInterface`（`get/set/has/delete/clear`）即可，签名与 `ArrayCache` 一致。
+
+## 并发与分布式（多进程 / 协程 Fibers / 分布式）
+
+`kode/attributes` 的读取器在常驻进程（Swoole / Workerman / FPM 多进程）、协程（Fibers）与分布式（多节点）环境下均保持正确与高效，关键在于「反射结果可跨进程复用」：
+
+- **多进程**：每个 worker 通过共享缓存（如 RedisCache）复用反射元数据，避免重复反射；`Attr::clearCache()` 可在 fork 后的子进程中安全清空继承自父进程的缓存。
+- **协程 / Fibers**：属性读取为纯反射、无全局可变状态，天然可重入，可在 Fiber 内并发读取。
+- **分布式**：通过 RedisCache 将元数据缓存到共享 Redis，跨节点共享，降低集群整体反射开销。
+- **实例保留**：`Meta` / `MetaList` 支持原生序列化并保留已实例化的属性对象，因此从共享缓存取回后无需再次实例化即可直接使用；若某属性实例不可序列化（极少见，例如构造参数含闭包），会自动降级为「纯数据快照」写入，保证缓存写入永不抛异常。
+
+```php
+use Kode\Attributes\Attr;
+use Kode\Attributes\Cache\RedisCache;
+
+// 多进程启动 / 节点接入时挂载共享缓存
+Attr::setCache(new RedisCache($redis, 'myapp:attr:v2:', 3600));
+
+// 多进程 / 分布式场景：一次反射，处处复用
+$list = Attr::of(UserController::class);
+$instance = $list->first()->getInstance(); // 跨进程取回的 Meta 仍可直接返回实例
+
+// fork 后的子进程：清空继承自父进程的缓存（避免读到过期/错乱的父进程状态）
+$pid = pcntl_fork();
+if ($pid === 0) {
+    Attr::clearCache();
+    // ... 子进程逻辑
+}
+```
+
+> 注意：`ArrayCache` 仅限单进程内存，跨进程 / 分布式请改用 `RedisCache` 或其它实现 `CacheInterface` 的共享驱动。
+
+## 框架内属性定义与获取
+
+`kode/attributes` 与具体框架无关——你可以像使用原生 PHP Attribute 一样在类、方法、属性、参数、常量上声明属性，再通过 `Attr` 门面（或 `Inspector` 链式 API）在框架的启动、路由收集、依赖注入、事件发现等环节读取。
+
+```php
+use Attribute;
+
+#[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD)]
+class Route
 {
-    private \Redis $redis;
-    
-    public function __construct(\Redis $redis)
-    {
-        $this->redis = $redis;
-    }
-    
-    public function get(string $key, callable $loader): mixed
-    {
-        $value = $this->redis->get($key);
-        
-        if ($value === false) {
-            $value = $loader();
-            $this->redis->set($key, serialize($value));
-        }
-        
-        return is_string($value) ? unserialize($value) : $value;
-    }
-    
-    public function has(string $key): bool
-    {
-        return $this->redis->exists($key) > 0;
-    }
-    
-    public function set(string $key, mixed $value): void
-    {
-        $this->redis->set($key, serialize($value));
-    }
-    
-    public function delete(string $key): void
-    {
-        $this->redis->del($key);
-    }
-    
-    public function clear(): void
-    {
-        $this->redis->flushDB();
-    }
+    public function __construct(
+        public readonly string $path,
+        public readonly array $methods = ['GET']
+    ) {}
 }
 
-// 使用自定义缓存
-$reader = new Reader(new RedisCache($redis));
-Attr::setReader($reader);
+#[Attribute(Attribute::TARGET_PROPERTY)]
+class Inject
+{
+    public function __construct(public readonly string $service) {}
+}
+
+#[Route('/users', ['GET', 'POST'])]
+class UserController
+{
+    #[Inject('App\Service\UserRepo')]
+    private $repo;
+
+    #[Route('/users/{id}', ['GET'])]
+    public function show(int $id): void {}
+}
+```
+
+**按成员类型精确读取**（框架路由收集器 / DI 容器常用）：
+
+```php
+use Kode\Attributes\Attr;
+
+// 类级属性
+Attr::ofClass(UserController::class)->first()->getInstance();      // Route('/users', ['GET','POST'])
+
+// 方法级属性
+Attr::ofMethod(UserController::class, 'show')->first()->getInstance(); // Route('/users/{id}', ['GET'])
+
+// 属性级属性（DI 注入声明）
+Attr::ofProperty(UserController::class, 'repo')->first()->getInstance(); // Inject('App\Service\UserRepo')
+
+// 批量收集某类所有带 Route 的方法（路由注册表）
+$routes = Attr::methods(UserController::class, Route::class);
+```
+
+**链式读取**（`Inspector`，等价于框架内部的收集逻辑）：
+
+```php
+use Kode\Attributes\Attr;
+
+$route = Attr::on([UserController::class, 'show'])
+    ->get(Route::class)
+    ?->getInstance();
+
+// 或基于对象实例
+$route = Attr::on(new UserController())
+    ->property('repo')
+    ->get(Inject::class)
+    ?->getInstance();
+```
+
+**直接传入 Reflection 对象**（2.0 根因修复后支持，框架内部常持有 Reflection 实例）：
+
+```php
+$ref = new \ReflectionProperty(UserController::class, 'repo');
+Attr::of($ref)->first()->getInstance(); // 读取的是属性自身的 Inject，而非 Reflection 类自身
 ```
 
 ## 系统要求
@@ -450,6 +532,7 @@ Attr::setReader($reader);
 - PHP >= 8.3
 - ext-json
 - ext-mbstring
+- ext-redis（仅在使用 `Cache\RedisCache` 时需要）
 
 ## 兼容性
 

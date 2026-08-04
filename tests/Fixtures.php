@@ -79,6 +79,43 @@ class BrokenAttribute
     }
 }
 
+#[Attribute(Attribute::TARGET_CLASS)]
+class ClosureAttribute
+{
+    public $cb;
+
+    public function __construct(callable $cb)
+    {
+        $this->cb = $cb;
+    }
+}
+
+/*
+ * 框架风格属性与控制器夹具，用于演示「框架内属性定义与获取」。
+ */
+
+#[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD)]
+class RouteAttribute
+{
+    public function __construct(
+        public readonly string $path,
+        public readonly array $methods = ['GET']
+    ) {
+    }
+}
+
+#[RouteAttribute('/users', ['GET', 'POST'])]
+class UserController
+{
+    #[InjectAttribute('App\\Service\\UserRepo')]
+    private $repo;
+
+    #[RouteAttribute('/users/{id}', ['GET'])]
+    public function show(int $id): void
+    {
+    }
+}
+
 #[SampleAttribute('test-class', 10)]
 #[SampleAttribute('another-class', 20)]
 class SampleClass
