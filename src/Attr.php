@@ -48,7 +48,7 @@ final class Attr
     /**
      * 组件版本号。
      */
-    public const string VERSION = '2.1.1';
+    public const string VERSION = '2.2.0';
 
     /**
      * Reader 单例实例。

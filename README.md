@@ -211,7 +211,7 @@ foreach ($scanner->scanDeep(__DIR__ . '/src') as $class => $info) {
 | `TargetRef` | 目标归一化与缓存键生成（2.0 核心修复层） |
 | `TargetSet` | 位掩码目标集合（精确表达组合目标，不再退化成 All） |
 | `Inspector` | 链式属性检查器（2.0 新增） |
-| `Cache\RedisCache` | 基于 Redis 的共享/分布式缓存适配器（2.1.0 新增，面向多进程/Fibers/分布式） |
+| `Cache\RedisCache` | 基于 Redis 的共享/分布式缓存适配器（2.1.0 新增，面向多进程/Fibers/分布式；2.2.0 起受限反序列化，只缓存数据不缓存对象） |
 | `Exception\*` | 异常体系：`AttributeException` / `InvalidTargetException` / `TargetNotFoundException` / `AttributeInstantiationException` |
 
 ### 关键接口
@@ -398,7 +398,22 @@ $flags->__toString(): string
 
 本包内置 `Kode\Attributes\Cache\RedisCache`（2.1.0 起），开箱即用地支持 **多进程 / 协程 Fibers / 分布式** 场景，无需自行实现。如需其它后端（APCu、文件、Memcached），实现 `CacheInterface` 即可。
 
-> 内置 `RedisCache` 已实现 `CacheInterface`，并具备：键前缀隔离、TTL 过期、`SCAN` 前缀批量清理、跨进程保留属性实例（不可序列化时自动降级为快照）。
+> 内置 `RedisCache` 已实现 `CacheInterface`，并具备：键前缀隔离、TTL 过期、`SCAN` 前缀批量清理、**只缓存数据不缓存对象**（详见下节）。
+
+### RedisCache 的安全契约（2.2.0 起）
+
+共享存储是「别人也能写」的地方，因此 `RedisCache` 把缓存严格当作**数据**而非对象图：
+
+| 环节 | 行为 | 动机 |
+| --- | --- | --- |
+| 读 | `unserialize($raw, ['allowed_classes' => false])` | 外部写入的序列化串不会实例化任何类，堵死对象注入 / POP 链；枚举因不可被构造而原样保留 |
+| 写（`MetaList`） | 恒以 `toSnapshot()` 的纯数据快照落盘 | 与读侧限制配对；取回后 `Meta::getInstance()` 仍按需惰性构造，语义不变 |
+| 写（含不可还原对象） | **跳过写入**（属性参数里的嵌套属性实例等） | 宁可在本进程多一次反射，也不落一份取回即失真的数据 |
+| 写（闭包 / 资源） | 替换为占位串后照常写入 | 保持「缓存写入永不抛异常」的历史语义 |
+| 载荷异常 | 解码失败 / 结构不合规 / 含残缺对象 → 按未命中处理并删除键后回源重建 | 绝不返回半成品；旧版本写入的原生序列化条目会在此机制下自动失效 |
+
+> 若你的应用把 `RedisCache` 之外的共享后端（自行实现的 `CacheInterface`）用作缓存，请同样遵守「不得反序列化不受信任数据」这条底线。
+> `Meta` / `MetaList` 自身的 `serialize()` 仍保留属性实例，供**进程内**或可信后端使用；跨进程共享请依赖快照 + 惰性实例化。
 
 ```php
 use Kode\Attributes\Attr;
@@ -430,7 +445,7 @@ $routes = Attr::ofClass(UserController::class);
 - **多进程**：每个 worker 通过共享缓存（如 RedisCache）复用反射元数据，避免重复反射；`Attr::clearCache()` 可在 fork 后的子进程中安全清空继承自父进程的缓存。
 - **协程 / Fibers**：属性读取为纯反射、无全局可变状态，天然可重入，可在 Fiber 内并发读取。
 - **分布式**：通过 RedisCache 将元数据缓存到共享 Redis，跨节点共享，降低集群整体反射开销。
-- **实例保留**：`Meta` / `MetaList` 支持原生序列化并保留已实例化的属性对象，因此从共享缓存取回后无需再次实例化即可直接使用；若某属性实例不可序列化（极少见，例如构造参数含闭包），会自动降级为「纯数据快照」写入，保证缓存写入永不抛异常。
+- **实例按需构造**：`RedisCache` 跨进程传输的是「纯数据快照」（`MetaList::toSnapshot()`），取回后 `Meta::getInstance()` 会以 `name + args` 惰性构造属性实例并缓存于本进程——省掉的是反射，不是实例化；这样共享载荷里永远不含可被反序列化的对象（见上文安全契约）。`Meta` / `MetaList` 自身仍支持保留实例的原生序列化，供进程内或可信后端使用。
 
 ```php
 use Kode\Attributes\Attr;
@@ -441,7 +456,7 @@ Attr::setCache(new RedisCache($redis, 'myapp:attr:v2:', 3600));
 
 // 多进程 / 分布式场景：一次反射，处处复用
 $list = Attr::of(UserController::class);
-$instance = $list->first()->getInstance(); // 跨进程取回的 Meta 仍可直接返回实例
+$instance = $list->first()->getInstance(); // 快照取回后按需惰性构造，本进程内后续读取直接命中
 
 // fork 后的子进程：清空继承自父进程的缓存（避免读到过期/错乱的父进程状态）
 $pid = pcntl_fork();

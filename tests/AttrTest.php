@@ -38,7 +38,21 @@ final class AttrTest extends TestCase
     #[Test]
     public function versionIsTwo(): void
     {
-        $this->assertSame('2.1.1', Attr::VERSION);
+        $this->assertStringStartsWith('2.', Attr::VERSION);
+    }
+
+    #[Test]
+    public function versionConstantMatchesComposerManifest(): void
+    {
+        $manifest = json_decode((string) file_get_contents(dirname(__DIR__) . '/composer.json'), true);
+
+        $this->assertIsArray($manifest);
+        $this->assertArrayHasKey('version', $manifest);
+        $this->assertSame(
+            $manifest['version'],
+            Attr::VERSION,
+            'Attr::VERSION 与 composer.json 的 version 漂移：发版时两处必须一起改'
+        );
     }
 
     #[Test]

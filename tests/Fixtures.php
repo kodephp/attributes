@@ -183,3 +183,33 @@ class CollisionBaz
     #[SampleAttribute('baz-bar-method')]
     public function bar(): void {}
 }
+
+#[Attribute(Attribute::TARGET_CLASS)]
+class EnumArgAttribute
+{
+    public function __construct(public readonly RoleEnum $role) {}
+}
+
+#[Attribute(Attribute::TARGET_CLASS)]
+class NestedAttrArgument
+{
+    public function __construct(public readonly SampleAttribute $inner) {}
+}
+
+/**
+ * 载荷投毒探针：`__wakeup` 在被反序列化实例化时触发，测试据此断言
+ * 「受限解码从不把控制权交给载荷里自带的类钩子」（对象注入 / POP 链的入口）。
+ */
+class PoisonGadget
+{
+    public static int $woke = 0;
+
+    public function __construct(public readonly string $payload = '')
+    {
+    }
+
+    public function __wakeup(): void
+    {
+        ++self::$woke;
+    }
+}

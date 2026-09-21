@@ -29,13 +29,16 @@ use Throwable;
  * - **分布式**（多台服务器）：通过 Redis 集群共享缓存，降低跨节点反射开销；
  * - **常驻进程 + 热重启**：worker 退出后缓存仍保留于 Redis，重启即命中。
  *
- * 说明：
- * - 缓存值必须可序列化。本包的 `Meta` / `MetaList` 已支持原生序列化
- *   （见 {@see \Kode\Attributes\Meta::__serialize}），其中「已实例化的属性对象」会被一并保留，
- *   因此跨进程 / 跨节点取回的 {@see MetaList} 仍可直接返回实例。
- * - 若某个属性实例本身不可序列化（极少见），会自动降级为「纯数据快照」存储
- *   （丢失实例、仅保留声明），保证缓存写入不抛异常。
- * - 该适配器依赖 `ext-redis`；无 Redis 环境仍可使用默认的 {@see ArrayCache}（进程内）。
+ * 只缓存数据，不缓存对象（自 v2.2.0 起的契约）：
+ * - 读取一律走 `unserialize($raw, ['allowed_classes' => false])`，共享 Redis 被外部写入时
+ *   也不会实例化任何类（对象注入 / POP 链）；枚举因不可被构造而能安全原样取回。
+ * - 与之配对，{@see MetaList} 恒以 `toSnapshot()` 的纯数据形态落盘，取回后仍可按需
+ *   `Meta::getInstance()` 惰性构造属性实例，语义不变、少一次反射。
+ * - 载荷里含「受限解码后取不回原样」的对象（嵌套属性实例等）时**跳过写入**：
+ *   宁可本进程多一次反射，也不落一份取回即失真的数据。
+ * - 解码失败 / 结构不合规 / 含残缺对象的载荷一律按未命中处理并删除键，绝不返回半成品，
+ *   因此历史版本写入的原生序列化条目会自动失效重建。
+ * - 该适配器依赖 `ext-redis`；无 Redis 环境仍可使用默认的 {@see \Kode\Attributes\ArrayCache}（进程内）。
  *
  * @package Kode\Attributes\Cache
  * @author  kode (KodePHP) <382601296@qq.com>
@@ -53,6 +56,26 @@ final class RedisCache implements CacheInterface
      * 默认过期时间（秒）。
      */
     public const int DEFAULT_TTL = 3600;
+
+    /**
+     * 纯数据快照的结构键。
+     */
+    private const string SNAPSHOT_KEY = '__kode_snapshot';
+
+    /**
+     * 布尔 false 的序列化形态（`unserialize()` 失败时也返回 false，需据此区分）。
+     */
+    private const string SERIALIZED_FALSE = 'b:0;';
+
+    /**
+     * 不可序列化值（闭包 / 资源）的占位串，保持「写入永不抛异常」的历史语义。
+     */
+    private const string UNSERIALIZABLE = '__kode_unserializable__';
+
+    /**
+     * 递归校验的深度上限：载荷可能来自外部写入，自引用数组会把递归变成死循环。
+     */
+    private const int MAX_NEST_DEPTH = 16;
 
     /**
      * @param Redis $redis 已连接的 Redis 实例
@@ -75,12 +98,23 @@ final class RedisCache implements CacheInterface
         $rk = $this->key($key);
         $raw = $this->redis->get($rk);
 
-        if ($raw !== false && $raw !== null) {
-            return $this->unpack($raw);
+        if (is_string($raw)) {
+            $cached = null;
+
+            if ($this->unpack($raw, $cached)) {
+                return $cached;
+            }
+
+            // 载荷不可还原（外部写入污染 / 历史版本格式）：删键重建，绝不返回半成品
+            $this->redis->del($rk);
         }
 
         $value = $loader();
-        $this->store($rk, $this->pack($value));
+        $payload = $this->pack($value);
+
+        if ($payload !== null) {
+            $this->store($rk, $payload);
+        }
 
         return $value;
     }
@@ -96,11 +130,17 @@ final class RedisCache implements CacheInterface
 
     /**
      * {@inheritDoc}
+     *
+     * 值无法在「受限解码」下原样取回时静默跳过写入。
      */
     #[\Override]
     public function set(string $key, mixed $value): void
     {
-        $this->store($this->key($key), $this->pack($value));
+        $payload = $this->pack($value);
+
+        if ($payload !== null) {
+            $this->store($this->key($key), $payload);
+        }
     }
 
     /**
@@ -129,7 +169,7 @@ final class RedisCache implements CacheInterface
                 break;
             }
 
-            if ($keys !== [] && $keys !== null) {
+            if ($keys !== []) {
                 $this->redis->del(...$keys);
             }
         } while ($it > 0);
@@ -144,84 +184,155 @@ final class RedisCache implements CacheInterface
     }
 
     /**
-     * 序列化缓存值并落盘。
+     * 把缓存值打包为「受限解码后仍能原样取回」的载荷。
      *
-     * 对 {@see MetaList} 优先尝试保留实例的原生序列化；若实例不可序列化
-     * （极少见，例如属性构造函数里携带闭包 / 资源），则降级为「纯数据快照」
-     * 并递归剥离其中的不可序列化值，保证写入永不抛异常。
+     * @return string|null 载荷；null 表示该值不该进共享缓存（跳过写入）
      */
-    private function pack(mixed $value): string
+    private function pack(mixed $value): ?string
     {
         if ($value instanceof MetaList) {
-            try {
-                return serialize($value);
-            } catch (Throwable) {
-                return serialize(['__kode_snapshot' => $this->sanitize($value->toSnapshot())]);
+            $snapshot = $value->toSnapshot();
+
+            if ($this->hasUnrestorableObject($snapshot)) {
+                return null;
+            }
+
+            /** @var array<int, array<string, mixed>> $cleaned */
+            $cleaned = $this->stripUnserializable($snapshot);
+
+            return serialize([self::SNAPSHOT_KEY => $cleaned]);
+        }
+
+        if ($this->hasUnrestorableObject($value)) {
+            return null;
+        }
+
+        return $this->trySerialize($value);
+    }
+
+    /**
+     * 受限反序列化，把载荷还原为缓存值。
+     *
+     * @param-out mixed $value
+     * @return bool false 表示载荷不可信或不可还原，调用方应按未命中处理
+     */
+    private function unpack(string $raw, mixed &$value): bool
+    {
+        if ($raw === self::SERIALIZED_FALSE) {
+            $value = false;
+
+            return true;
+        }
+
+        $data = @unserialize($raw, ['allowed_classes' => false]);
+
+        if ($data === false) {
+            return false;
+        }
+
+        if (is_array($data) && array_key_exists(self::SNAPSHOT_KEY, $data)) {
+            if (!$this->validSnapshot($data[self::SNAPSHOT_KEY])) {
+                return false;
+            }
+
+            /** @var array<int, array{name: string, args?: array<int|string, mixed>}> $snapshot */
+            $snapshot = $data[self::SNAPSHOT_KEY];
+            $value = MetaList::fromSnapshot($snapshot);
+
+            return true;
+        }
+
+        if ($this->hasUnrestorableObject($data)) {
+            return false;
+        }
+
+        $value = $data;
+
+        return true;
+    }
+
+    /**
+     * 快照结构校验：每项都必须是「name 为字符串、args 为纯数据」的数组。
+     *
+     * 结构不合规说明载荷不是本类写出的（或来自能裸还原对象的旧版本），按未命中处理。
+     */
+    private function validSnapshot(mixed $payload, int $depth = 0): bool
+    {
+        if (!is_array($payload) || $depth > self::MAX_NEST_DEPTH) {
+            return false;
+        }
+
+        foreach ($payload as $item) {
+            if (!is_array($item) || !isset($item['name']) || !is_string($item['name'])) {
+                return false;
+            }
+
+            if (array_key_exists('args', $item)
+                && (!is_array($item['args']) || $this->hasUnrestorableObject($item['args'], $depth + 1))) {
+                return false;
             }
         }
 
-        try {
-            return serialize($value);
-        } catch (Throwable) {
-            // 非 MetaList 的不可序列化值：退化为字符串标记，确保不中断缓存写入。
-            return serialize(['__kode_fallback' => is_object($value) ? get_class($value) : gettype($value)]);
-        }
+        return true;
     }
 
     /**
-     * 反序列化缓存值。
+     * 递归探测「写进共享缓存就取不回原样」的值。
      *
-     * 识别降级后的快照结构并还原为 {@see MetaList}（纯数据模式）。
+     * 非枚举对象在受限解码下会变成残缺对象（解码侧），或本就无跨进程形态（编码侧）；
+     * 闭包 / 资源另按历史契约以占位串降级，不在此列。
      */
-    private function unpack(string $raw): mixed
+    private function hasUnrestorableObject(mixed $value, int $depth = 0): bool
     {
-        $data = unserialize($raw);
-
-        if (is_array($data) && array_key_exists('__kode_snapshot', $data)) {
-            /** @var array<int, array{name: string, args?: array<int|string, mixed>}> $snapshot */
-            $snapshot = $data['__kode_snapshot'];
-
-            return MetaList::fromSnapshot($snapshot);
+        if ($depth > self::MAX_NEST_DEPTH) {
+            return true;
         }
 
-        if (is_array($data) && array_key_exists('__kode_fallback', $data)) {
-            return $data['__kode_fallback'];
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                if ($this->hasUnrestorableObject($item, $depth + 1)) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
-        return $data;
+        return is_object($value) && !$value instanceof \Closure && !$value instanceof \UnitEnum;
     }
 
     /**
-     * 递归清洗不可序列化的值（闭包、资源、含不可序列化字段的对象），
-     * 以安全字符串占位，确保快照可被 `serialize()`。
+     * 递归替换闭包 / 资源为占位串，保证快照写入不抛异常。
      */
-    private function sanitize(mixed $value): mixed
+    private function stripUnserializable(mixed $value): mixed
     {
         if ($value instanceof \Closure || is_resource($value)) {
-            return '__kode_unserializable__';
+            return self::UNSERIALIZABLE;
         }
 
         if (is_array($value)) {
             $out = [];
 
             foreach ($value as $k => $v) {
-                $out[$k] = $this->sanitize($v);
+                $out[$k] = $this->stripUnserializable($v);
             }
 
             return $out;
         }
 
-        if (is_object($value)) {
-            try {
-                serialize($value);
-
-                return $value;
-            } catch (Throwable) {
-                return '__kode_unserializable__';
-            }
-        }
-
         return $value;
+    }
+
+    /**
+     * 尝试序列化，失败返回 null（调用方跳过写入）。
+     */
+    private function trySerialize(mixed $value): ?string
+    {
+        try {
+            return serialize($value);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**
