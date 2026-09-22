@@ -109,6 +109,21 @@ final class AttrTest extends TestCase
         $this->assertGreaterThan(0, count(Attr::ofConstant(SampleClassWithConstant::class, 'SAMPLE_CONSTANT')));
     }
 
+    /**
+     * 目标归一化：类名 / 实例 / ReflectionClass 三种写法必须等价。
+     * 非继承模式下曾用 get_class($class) 取「请求类名」，传 ReflectionClass 时得到的是
+     * 'ReflectionClass' 本身，与声明类永不相等 → 属性列表静默变空。
+     */
+    #[Test]
+    public function propertyAccessorAcceptsAnyTargetForm(): void
+    {
+        $expected = count(Attr::ofProperty(SampleClass::class, 'property'));
+        $this->assertGreaterThan(0, $expected);
+
+        $this->assertSame($expected, count(Attr::ofProperty(new SampleClass(), 'property')));
+        $this->assertSame($expected, count(Attr::ofProperty(new \ReflectionClass(SampleClass::class), 'property')));
+    }
+
     #[Test]
     public function attrGroupAccessors(): void
     {

@@ -162,7 +162,9 @@ final class Reader implements ReaderInterface
         if (!$inherited) {
             // 非继承模式只认“直接声明在该类上的属性”，避免误读到父类的私有属性。
             $declared = $ref->getDeclaringClass()->getName();
-            $requested = is_object($class) ? get_class($class) : ltrim($class, '\\');
+            // 目标可以是类名 / 实例 / 反射对象，一律先归一化成类名再比对：
+            // 直接 get_class($class) 会把 ReflectionClass 本身当成“请求的类”，判定永远不相等 → 静默返回空。
+            $requested = TargetRef::resolveClass($class)->getName();
 
             if ($declared !== $requested) {
                 return MetaList::empty();

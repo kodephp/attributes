@@ -78,6 +78,20 @@ final class InheritanceTest extends TestCase
     }
 
     #[Test]
+    public function overriddenMemberShadowsParentAttribute(): void
+    {
+        $methods = Attr::methods(ShadowChild::class, inherited: true);
+
+        $this->assertCount(
+            1,
+            $methods['act'],
+            '非可重复属性被子类在同一成员上重新声明时应只留一份（就近覆盖）；'
+                . '两份会让「不可重复」这个约束在同一次读取里自相矛盾'
+        );
+        $this->assertEquals('child-mark', $methods['act']->first()->getArgument('name'));
+    }
+
+    #[Test]
     public function collectPropertiesTraversesParents(): void
     {
         $reader = new Reader();

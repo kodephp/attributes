@@ -155,6 +155,19 @@ class InheritanceChild extends InheritanceBase
     public function baseMethod(): void {}
 }
 
+class ShadowBase
+{
+    #[MethodMarker('parent-mark')]
+    public function act(): void {}
+}
+
+class ShadowChild extends ShadowBase
+{
+    // 覆写并在同一成员上重新声明同一个非可重复属性：应就近覆盖父类那份
+    #[MethodMarker('child-mark')]
+    public function act(): void {}
+}
+
 #[BrokenAttribute]
 class ClassWithBroken
 {

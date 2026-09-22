@@ -542,6 +542,19 @@ $ref = new \ReflectionProperty(UserController::class, 'repo');
 Attr::of($ref)->first()->getInstance(); // 读取的是属性自身的 Inject，而非 Reflection 类自身
 ```
 
+`ofClass` / `ofMethod` / `ofProperty` 等按成员读取的入口同样接受三种目标写法，结果完全等价
+（v2.2.1 起对齐；此前向 `ofProperty(new \ReflectionClass(X), 'p')` 传反射对象会静默返回空集合）：
+
+```php
+Attr::ofProperty(UserController::class, 'repo');               // 类名字符串
+Attr::ofProperty(new UserController(), 'repo');                // 实例
+Attr::ofProperty(new \ReflectionClass(UserController::class), 'repo'); // 反射对象
+```
+
+**继承合并语义：就近覆盖**（`$inherited = true`）：子类在同一成员上重新声明了父类的非可重复属性时，
+只保留子类的声明；子类没有重新声明时，父类声明照常继承。因此 `#[Route]` 这类属性写在重写方法上
+即视为覆盖父类语义，读取方不会同时拿到父子两份。
+
 ## 系统要求
 
 - PHP >= 8.3
