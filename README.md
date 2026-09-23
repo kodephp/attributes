@@ -8,6 +8,11 @@
 
 > **v2.0.0 重大修复（根因）**：1.x 的 `Attr` 门面只接受类名字符串或对象。一旦传入 `ReflectionClass` / `ReflectionProperty` / `ReflectionParameter`，由于它们本身也是“对象”，会被当作普通对象处理，转而读取 **Reflection 类自身** 的属性——永远返回空集合且不报错，整条属性注入链就此静默失效。2.0 通过 `TargetRef` 将所有目标归一化为 `Reflector` 实例并原样透传，从根因上杜绝该问题，并在目标不存在时抛出 `TargetNotFoundException` 而非静默返回空集合。
 
+
+## 版本自述
+
+本包版本可由类常量核对：`Kode\Attributes\Attr::VERSION`，或调用 `Attr::version()`（当前 `2.2.2`）。`composer.json` 的 `version` 是 composer 侧权威值，类常量是它的交叉核对副本——`tests/VersionGuardTest.php` 在两者不一致时直接失败。
+
 ## 特性
 
 - **零依赖** - 仅使用 PHP 原生功能，无第三方依赖

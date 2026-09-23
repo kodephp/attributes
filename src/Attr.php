@@ -48,7 +48,15 @@ final class Attr
     /**
      * 组件版本号。
      */
-    public const string VERSION = '2.2.1';
+    public const string VERSION = '2.2.2';
+
+    /**
+     * 获取本包版本号（与 composer.json 的 version 交叉核对，漏改由 VersionGuardTest 拦下）。
+     */
+    public static function version(): string
+    {
+        return self::VERSION;
+    }
 
     /**
      * Reader 单例实例。
