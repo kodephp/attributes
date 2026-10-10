@@ -36,9 +36,9 @@ final class AttrTest extends TestCase
     }
 
     #[Test]
-    public function versionIsTwo(): void
+    public function versionIsThree(): void
     {
-        $this->assertStringStartsWith('2.', Attr::VERSION);
+        $this->assertStringStartsWith('3.', Attr::VERSION);
     }
 
     #[Test]

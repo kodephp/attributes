@@ -1,10 +1,10 @@
 # kode/attributes
 
-[![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.3-8892BF)](https://php.net/)
+[![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.4-8892BF)](https://php.net/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green)](LICENSE)
 [![Latest Stable Version](https://img.shields.io/packagist/v/kode/attributes)](https://packagist.org/packages/kode/attributes)
 
-一个轻量级、健壮的 PHP 8.3+ 属性（Attribute）读取器，为 kodephp 框架和主流 PHP 框架（Laravel、Symfony、ThinkPHP8、Webman 等）提供基础组件支持。
+一个轻量级、健壮的 PHP 8.4+ 属性（Attribute）读取器，为 kodephp 框架和主流 PHP 框架（Laravel、Symfony、ThinkPHP8、Webman 等）提供基础组件支持。
 
 > **v2.0.0 重大修复（根因）**：1.x 的 `Attr` 门面只接受类名字符串或对象。一旦传入 `ReflectionClass` / `ReflectionProperty` / `ReflectionParameter`，由于它们本身也是“对象”，会被当作普通对象处理，转而读取 **Reflection 类自身** 的属性——永远返回空集合且不报错，整条属性注入链就此静默失效。2.0 通过 `TargetRef` 将所有目标归一化为 `Reflector` 实例并原样透传，从根因上杜绝该问题，并在目标不存在时抛出 `TargetNotFoundException` 而非静默返回空集合。
 
@@ -17,10 +17,10 @@
 
 - **零依赖** - 仅使用 PHP 原生功能，无第三方依赖
 - **高性能** - 内置反射缓存机制，延迟实例化属性对象
-- **类型安全** - 利用 PHP 8.3+ 的枚举、泛型与 `#[Override]` 等特性
+- **类型安全** - 利用 PHP 8.4+ 的枚举、泛型与 `#[Override]` 等特性
 - **IDE 友好** - 提供完整的 PHPStorm 元数据支持
 - **协变支持** - `MetaList<@template-covariant T>` 支持类型安全的协变
-- **框架无关** - 可在任何 PHP 8.3+ 项目中使用
+- **框架无关** - 可在任何 PHP 8.4+ 项目中使用
 - **安全封装** - 封装反射 API，避免直接暴露 `ReflectionClass`
 - **可扩展** - 可插拔缓存系统，支持自定义缓存驱动
 
@@ -562,7 +562,7 @@ Attr::ofProperty(new \ReflectionClass(UserController::class), 'repo'); // 反射
 
 ## 系统要求
 
-- PHP >= 8.3
+- PHP >= 8.4
 - ext-json
 - ext-mbstring
 - ext-redis（仅在使用 `Cache\RedisCache` 时需要）

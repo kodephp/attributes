@@ -1,7 +1,7 @@
 {
     "name": "kode/attributes",
     "type": "library",
-    "description": "轻量级、健壮的 PHP 8.3+ 属性读取器，为 kodephp 框架和主流 PHP 框架提供基础组件支持",
+    "description": "轻量级、健壮的 PHP 8.4+ 属性读取器，为 kodephp 框架和主流 PHP 框架提供基础组件支持",
     "keywords": [
         "attributes",
         "annotations",
@@ -14,7 +14,7 @@
         "metadata"
     ],
     "license": "Apache-2.0",
-    "version": "2.2.2",
+    "version": "3.0.0",
     "authors": [
         {
             "name": "kode",
@@ -24,7 +24,7 @@
         }
     ],
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "ext-json": "*",
         "ext-mbstring": "*"
     },
