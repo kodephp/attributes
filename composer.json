@@ -6,7 +6,6 @@
         "attributes",
         "annotations",
         "reflection",
-        "php83",
         "php84",
         "php85",
         "kode",
@@ -14,7 +13,7 @@
         "metadata"
     ],
     "license": "Apache-2.0",
-    "version": "3.0.0",
+    "version": "3.0.1",
     "authors": [
         {
             "name": "kode",
