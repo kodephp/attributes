@@ -147,6 +147,7 @@ class Flags
      * 
      * @return string 字符串表示
      */
+    #[\Override]
     public function __toString(): string
     {
         $parts = [];
