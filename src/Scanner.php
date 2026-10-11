@@ -501,7 +501,7 @@ final class Scanner
      * @param int $start 开始索引
      * @param int $limit 限制数量
      */
-    private static function parseNamespace(array $tokens, int $start, int $limit): string
+    private static function parseNamespace(#[\SensitiveParameter] array $tokens, int $start, int $limit): string
     {
         $namespace = '';
 
@@ -539,7 +539,7 @@ final class Scanner
      * @param int $start 开始索引
      * @param int $limit 限制数量
      */
-    private static function parseTypeName(array $tokens, int $start, int $limit): ?string
+    private static function parseTypeName(#[\SensitiveParameter] array $tokens, int $start, int $limit): ?string
     {
         for ($i = $start; $i < $limit; $i++) {
             $token = $tokens[$i] ?? null;
