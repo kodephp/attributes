@@ -386,13 +386,7 @@ final class Scanner
      */
     private function shouldExclude(string $path): bool
     {
-        foreach ($this->excludes as $pattern) {
-            if (self::matchPattern($path, $pattern)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->excludes, fn($pattern) => self::matchPattern($path, $pattern));
     }
 
     /**
@@ -400,13 +394,7 @@ final class Scanner
      */
     private function shouldInclude(string $path): bool
     {
-        foreach ($this->includes as $pattern) {
-            if (self::matchPattern($path, $pattern)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->includes, fn($pattern) => self::matchPattern($path, $pattern));
     }
 
     /**

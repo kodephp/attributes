@@ -175,13 +175,7 @@ final class MetaList implements Countable, IteratorAggregate, JsonSerializable
      */
     public function get(string $className): ?Meta
     {
-        foreach ($this->list as $meta) {
-            if ($meta->is($className)) {
-                return $meta;
-            }
-        }
-
-        return null;
+        return array_find($this->list, fn($meta) => $meta->is($className));
     }
 
     /**
@@ -344,13 +338,7 @@ final class MetaList implements Countable, IteratorAggregate, JsonSerializable
      */
     public function some(callable $fn): bool
     {
-        foreach ($this->list as $meta) {
-            if ($fn($meta)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->list, fn($meta) => $fn($meta));
     }
 
     /**
@@ -360,13 +348,7 @@ final class MetaList implements Countable, IteratorAggregate, JsonSerializable
      */
     public function every(callable $fn): bool
     {
-        foreach ($this->list as $meta) {
-            if (!$fn($meta)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($this->list, fn($meta) => $fn($meta));
     }
 
     /**

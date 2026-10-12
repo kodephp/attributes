@@ -289,13 +289,7 @@ final class RedisCache implements CacheInterface
         }
 
         if (is_array($value)) {
-            foreach ($value as $item) {
-                if ($this->hasUnrestorableObject($item, $depth + 1)) {
-                    return true;
-                }
-            }
-
-            return false;
+            return array_any($value, fn($item) => $this->hasUnrestorableObject($item, $depth + 1));
         }
 
         return is_object($value) && !$value instanceof \Closure && !$value instanceof \UnitEnum;

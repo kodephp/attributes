@@ -48,7 +48,7 @@ final class Attr
     /**
      * 组件版本号。
      */
-    public const string VERSION = '3.0.4';
+    public const string VERSION = '3.0.5';
 
     /**
      * 获取本包版本号（与 composer.json 的 version 交叉核对，漏改由 VersionGuardTest 拦下）。

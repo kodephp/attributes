@@ -313,12 +313,6 @@ enum Target: int
             $value |= $target->value;
         }
         
-        foreach (self::cases() as $case) {
-            if ($case->value === $value) {
-                return $case;
-            }
-        }
-        
-        return self::All;
+        return array_find(self::cases(), fn($case) => $case->value === $value) ?? self::All;
     }
 }
