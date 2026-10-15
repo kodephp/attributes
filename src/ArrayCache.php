@@ -205,11 +205,8 @@ final class ArrayCache implements CacheInterface
         }
 
         while (count($this->cache) > $this->capacity) {
+            // 循环条件已保证非空，array_key_first 必得键
             $oldest = array_key_first($this->cache);
-
-            if ($oldest === null) {
-                return;
-            }
 
             unset($this->cache[$oldest]);
             $this->stats['evictions']++;

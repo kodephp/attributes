@@ -335,7 +335,8 @@ final class RedisCache implements CacheInterface
     private function store(string $rk, string $payload): void
     {
         if ($this->ttl > 0) {
-            $this->redis->set($rk, $payload, $this->ttl);
+            // phpredis 6+ 的 set() 第三参为 options 数组，TTL 用 ex 键表达
+            $this->redis->set($rk, $payload, ['ex' => $this->ttl]);
         } else {
             $this->redis->set($rk, $payload);
         }

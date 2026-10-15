@@ -24,9 +24,10 @@ use Traversable;
  * 属性元数据集合类。
  *
  * 提供便捷的属性集合操作，包括过滤、映射、遍历、分组、排序等功能。
- * 支持协变泛型，允许子类安全返回。
+ * 不声明协变：merge()/concat() 需要在参数位接收同 T 集合，协变模板会与
+ * 逆变参数位置冲突（phpstan template.covariant）。
  *
- * @template-covariant T of Meta
+ * @template T of Meta
  * @implements IteratorAggregate<int, T>
  * @package Kode\Attributes
  * @author  kode (KodePHP) <382601296@qq.com>

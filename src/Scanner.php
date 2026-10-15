@@ -430,11 +430,8 @@ final class Scanner
             return [];
         }
 
+        // token_get_all 不带 TOKEN_PARSE 时不会返回 false
         $tokens = @token_get_all($content);
-
-        if ($tokens === false) {
-            return [];
-        }
 
         $types = [];
         $namespace = '';
